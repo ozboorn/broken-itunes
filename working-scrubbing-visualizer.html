@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Visualizer with Themes</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    #container {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+    }
+    #visualizer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #controls {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: rgba(200, 200, 200, 0.85);
+      padding: 10px;
+      border-bottom: 1px solid #999;
+      display: flex;
+      align-items: center;
+      z-index: 1000;
+    }
+    .button {
+      width: 30px;
+      height: 30px;
+      border-radius: 15px;
+      background-color: #ddd;
+      border: 1px solid #999;
+      margin: 0 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .button:hover {
+      background-color: #ccc;
+    }
+    .button:active {
+      background-color: #bbb;
+      transform: scale(0.95);
+    }
+    #player-info {
+      background-color: rgba(220, 255, 180, 0.8);
+      border-radius: 20px;
+      padding: 10px 20px;
+      margin: 0 auto;
+      text-align: center;
+      min-width: 200px;
+      max-width: 60%;
+    }
+    .time-display {
+      display: flex;
+      justify-content: space-between;
+      width: 80%;
+      margin: 0 auto;
+      font-size: 12px;
+      color: #333;
+    }
+    #progress {
+      width: 80%;
+      height: 10px;
+      background-color: #fff;
+      border: 1px solid #999;
+      border-radius: 5px;
+      margin: 5px auto;
+      position: relative;
+      cursor: pointer;
+      transition: height 0.2s ease;
+    }
+    #progress:hover {
+      height: 12px;
+    }
+    #progress-bar {
+      height: 100%;
+      background-color: #000;
+      width: 0%;
+      border-radius: 5px;
+      transition: width 0.1s linear;
+    }
+    #progress-marker {
+      position: absolute;
+      top: -3px;
+      left: 0;
+      width: 14px;
+      height: 14px;
+      background-color: #000;
+      border-radius: 50%;
+      transform: translateX(-7px);
+      transition: width 0.2s ease, height 0.2s ease, top 0.2s ease, transform 0.2s ease;
+    }
+    #progress:hover #progress-marker {
+      width: 16px;
+      height: 16px;
+      top: -4px;
+      transform: translateX(-8px);
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    }
+    #scrub-time {
+      position: absolute;
+      top: -25px;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      pointer-events: none;
+      display: none;
+      z-index: 2;
+    }
+    #upload-area {
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      color: white;
+      text-align: right;
+      padding: 10px;
+      z-index: 1100;
+      background-color: rgba(0, 0, 0, 0.5);
+      border-radius: 5px;
+    }
+    
+    #audio-upload {
+      background-color: rgba(255, 255, 255, 0.5);
+      border-radius: 5px;
+      color: black;
+      padding: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    #keyboard-controls {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      z-index: 100;
+    }
+    
+    /* Theme selectors */
+    #theme-selector {
+      display: flex;
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 1000;
+    }
+    
+    .theme-button {
+      width: 40px;
+      height: 40px;
+      border-radius: 20px;
+      margin: 0 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      transition: all 0.2s ease;
+      overflow: hidden;
+    }
+    
+    .theme-button:hover {
+      transform: scale(1.1);
+    }
+    
+    .theme-button.active {
+      border: 2px solid white;
+      box-shadow: 0 0 10px white;
+    }
+    
+    #regular-theme {
+      background: linear-gradient(to right, #00FF00, #00FFAA);
+    }
+    
+    #tron-theme {
+      background: linear-gradient(to right, #00FFFF, #FF6D00);
+    }
+    
+    #baddie-theme {
+      background: linear-gradient(to right, #FF69B4, #FFD700);
+      position: relative;
+    }
+    
+    #baddie-theme:after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h20v20H0V0zm20 20h20v20H20V20z' fill='%23000000' fill-opacity='0.3'/%3E%3C/svg%3E");
+      opacity: 0.5;
+    }
+    
+    /* Fireworks styling */
+    .firework {
+      pointer-events: none;
+      position: absolute;
+    }
+    
+    /* Visualization label */
+    #vis-label {
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 5px 15px;
+      border-radius: 15px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    #vis-label.show {
+      opacity: 1;
+    }
+    
+    /* Emergency play button */
+    #resume-button {
+      position: fixed;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #00AA00;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 15px;
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 1000;
+      display: none;
+    }
+    
+    #resume-button:hover {
+      background-color: #00BB00;
+    }
+    
+    #resume-button:active {
+      transform: translateX(-50%) scale(0.98);
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <canvas id="visualizer"></canvas>
+    <div id="controls">
+      <div class="button" id="prev-btn" title="Previous Visualization">⏮</div>
+      <div class="button" id="play-btn" title="Play/Pause">▶</div>
+      <div class="button" id="next-btn" title="Next Visualization">⏭</div>
+      <div id="player-info">
+        <div id="song-title">Upload a song</div>
+        <div class="time-display">
+          <span id="elapsed-time">0:00</span>
+          <span id="duration-time">0:00</span>
+        </div>
+        <div id="progress">
+          <div id="progress-bar"></div>
+          <div id="progress-marker"></div>
+          <div id="scrub-time"></div>
+        </div>
+      </div>
+      <div class="button" id="fullscreen-btn" title="Fullscreen (F)">⛶</div>
+    </div>
+    <div id="upload-area">
+      <input type="file" id="audio-upload" accept="audio/*">
+    </div>
+    <div id="keyboard-controls">
+      Keyboard: Space = Play/Pause | ← → = Seek | F = Fullscreen | 1-6 = Visualization | T = Theme
+    </div>
+    <div id="theme-selector">
+      <div class="theme-button active" id="regular-theme" title="Regular Theme (Green)"></div>
+      <div class="theme-button" id="tron-theme" title="Tron Theme (Blue/Orange)"></div>
+      <div class="theme-button" id="baddie-theme" title="Baddie Theme (Pink/Gold)"></div>
+    </div>
+    <div id="vis-label">Circular Waves</div>
+    <button id="resume-button">Resume Playback</button>
+  </div>
+
+  <script>
+    // Wait for the DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("DOM loaded, initializing visualizer...");
+      
+      // Get DOM elements
+      const canvas = document.getElementById('visualizer');
+      const ctx = canvas.getContext('2d');
+      const playBtn = document.getElementById('play-btn');
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const songTitle = document.getElementById('song-title');
+      const elapsedTime = document.getElementById('elapsed-time');
+      const durationTime = document.getElementById('duration-time');
+      const progressBar = document.getElementById('progress-bar');
+      const progressMarker = document.getElementById('progress-marker');
+      const progress = document.getElementById('progress');
+      const scrubTime = document.getElementById('scrub-time');
+      const audioUpload = document.getElementById('audio-upload');
+      const regularThemeBtn = document.getElementById('regular-theme');
+      const tronThemeBtn = document.getElementById('tron-theme');
+      const baddieThemeBtn = document.getElementById('baddie-theme');
+      const visLabel = document.getElementById('vis-label');
+      const resumeButton = document.getElementById('resume-button');
+      
+      // Show resume button when needed
+      resumeButton.addEventListener('click', function() {
+        if (audio) {
+          // Ensure audio context is running
+          if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+          }
+          
+          // Play directly, no promise handling
+          audio.play();
+          playBtn.innerHTML = '❚❚';
+          resumeButton.style.display = 'none';
+        }
+      });
+      
+      // Visualization transition variables
+      let currentVisualization = 0;
+      let targetVisualization = 0;
+      let transitionProgress = 1.0; // 1.0 means transition complete
+      let transitionDuration = 1.5; // Transition time in seconds
+      let transitionStartTime = 0;
+      let autoTransitionInterval = 12000; // Auto-switch every 12 seconds
+      let lastAutoTransitionTime = Date.now();
+      
+      // Visualization labels
+      const visualizationLabels = [
+        "Circular Waves",
+        "Twin Waves",
+        "Starburst",
+        "DNA Helix",
+        "Spiral Twist",
+        "Fireworks"
+      ];
+      
+      // Theme transition variables
+      let currentTheme = 'regular';
+      let targetTheme = 'regular';
+      let themeTransitionProgress = 1.0;
+      let themeTransitionStartTime = 0;
+      let themeTransitionDuration = 1.0; // Theme transition time in seconds
+      
+      // Theme color definitions
+      const themes = {
+        regular: {
+          primary: '#00FF00',         // Bright green
+          secondary: '#00FFAA',       // Teal green
+          accent: '#90EE90',          // Light green
+          background: '#000000',      // Black
+          gradient: function(ctx, w, h, direction) {
+            const grad = direction === 'horizontal' 
+                ? ctx.createLinearGradient(0, 0, w, 0)
+                : ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, 'rgb(0, 230, 0)');      // Bright green
+            grad.addColorStop(0.5, 'rgb(100, 255, 100)'); // Lighter green
+            grad.addColorStop(1, 'rgb(100, 255, 220)');   // Teal
+            return grad;
+          },
+          hue: 120,  // Green hue in HSL
+          getHue: function(base = 0) { return (this.hue + base) % 360; }
+        },
+        tron: {
+          primary: '#00FFFF',         // Cyan
+          secondary: '#FF6D00',       // Orange
+          accent: '#1E90FF',          // Dodger blue
+          background: '#000000',      // Black
+          gradient: function(ctx, w, h, direction) {
+            const grad = direction === 'horizontal' 
+                ? ctx.createLinearGradient(0, 0, w, 0)
+                : ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, 'rgb(0, 210, 255)');   // Cyan
+            grad.addColorStop(0.7, 'rgb(30, 144, 255)'); // Dodger blue
+            grad.addColorStop(1, 'rgb(255, 109, 0)');    // Orange accent
+            return grad;
+          },
+          hue: 180,  // Cyan hue in HSL
+          getHue: function(base = 0) { 
+            // For Tron, we want to oscillate between cyan and orange
+            if (base > 100) return 30; // Orange
+            return (this.hue + base) % 360; 
+          }
+        },
+        baddie: {
+          primary: '#FF69B4',         // Hot pink
+          secondary: '#FFD700',       // Gold
+          accent: '#FF1493',          // Deep pink
+          background: '#000000',      // Black
+          gradient: function(ctx, w, h, direction) {
+            const grad = direction === 'horizontal' 
+                ? ctx.createLinearGradient(0, 0, w, 0)
+                : ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, 'rgb(255, 105, 180)');  // Hot pink
+            grad.addColorStop(0.5, 'rgb(255, 20, 147)');  // Deep pink
+            grad.addColorStop(1, 'rgb(255, 215, 0)');     // Gold
+            return grad;
+          },
+          hue: 330,  // Pink hue in HSL
+          getHue: function(base = 0) { 
+            // For Baddie, we want to oscillate between pink and gold
+            if (base > 150) return 50; // Gold
+            return (this.hue + base) % 360; 
+          },
+          // Cheetah pattern
+          patternCanvas: null,
+          getPattern: function(ctx) {
+            if (!this.patternCanvas) {
+              // Create cheetah pattern
+              const patternCanvas = document.createElement('canvas');
+              const patternCtx = patternCanvas.getContext('2d');
+              patternCanvas.width = 100;
+              patternCanvas.height = 100;
+              
+              // Draw background
+              patternCtx.fillStyle = '#FFD700'; // Gold background
+              patternCtx.fillRect(0, 0, 100, 100);
+              
+              // Draw spots
+              patternCtx.fillStyle = '#000000';
+              for (let i = 0; i < 10; i++) {
+                const spotX = Math.random() * 100;
+                const spotY = Math.random() * 100;
+                const spotSize = 5 + Math.random() * 15;
+                
+                patternCtx.beginPath();
+                patternCtx.ellipse(
+                  spotX, spotY, 
+                  spotSize, spotSize * 0.7, 
+                  Math.random() * Math.PI, 
+                  0, Math.PI * 2
+                );
+                patternCtx.fill();
+              }
+              
+              this.patternCanvas = patternCanvas;
+            }
+            
+            return ctx.createPattern(this.patternCanvas, 'repeat');
+          }
+        }
+      };
+      
+      // Easing function for smoother transitions
+      function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      }
+      
+      // Update visualization type based on transitions
+      function updateVisualizationType() {
+        // Check for manual override
+        const savedType = localStorage.getItem('preferredVisualization');
+        
+        if (savedType !== null) {
+          // User manually selected a visualization
+          targetVisualization = parseInt(savedType);
+          if (targetVisualization !== currentVisualization && transitionProgress >= 1.0) {
+            // Show visualization label
+            visLabel.textContent = visualizationLabels[targetVisualization];
+            visLabel.classList.add('show');
+            setTimeout(() => visLabel.classList.remove('show'), 2000);
+            
+            // Start a new transition
+            transitionProgress = 0.0;
+            transitionStartTime = Date.now();
+          }
+        } else {
+          // Auto-cycle visualizations
+          const currentTime = Date.now();
+          if (currentTime - lastAutoTransitionTime > autoTransitionInterval && transitionProgress >= 1.0) {
+            targetVisualization = (currentVisualization + 1) % 6; // Cycle to next visualization
+            transitionProgress = 0.0;
+            transitionStartTime = currentTime;
+            lastAutoTransitionTime = currentTime;
+            
+            // Show visualization label
+            visLabel.textContent = visualizationLabels[targetVisualization];
+            visLabel.classList.add('show');
+            setTimeout(() => visLabel.classList.remove('show'), 2000);
+          }
+        }
+        
+        // Update transition progress
+        if (transitionProgress < 1.0) {
+          const elapsed = (Date.now() - transitionStartTime) / 1000;
+          transitionProgress = Math.min(elapsed / transitionDuration, 1.0);
+          
+          // Use easing function for smoother transition
+          transitionProgress = easeInOutCubic(transitionProgress);
+          
+          // If transition is complete, update current visualization
+          if (transitionProgress >= 1.0) {
+            currentVisualization = targetVisualization;
+            // Clear the saved preference after transition completes
+            if (savedType !== null) {
+              setTimeout(() => localStorage.removeItem('preferredVisualization'), 100);
+            }
+          }
+        }
+        
+        return {
+          current: currentVisualization,
+          target: targetVisualization,
+          progress: transitionProgress
+        };
+      }
+      
+      // Theme button event listeners
+      regularThemeBtn.addEventListener('click', () => setTheme('regular'));
+      tronThemeBtn.addEventListener('click', () => setTheme('tron'));
+      baddieThemeBtn.addEventListener('click', () => setTheme('baddie'));
+      
+      // Set active theme
+      function setTheme(themeName) {
+        if (themeName === currentTheme) return;
+        
+        targetTheme = themeName;
+        themeTransitionProgress = 0.0;
+        themeTransitionStartTime = Date.now();
+        
+        // Update UI
+        document.querySelectorAll('.theme-button').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        
+        document.getElementById(`${themeName}-theme`).classList.add('active');
+      }
+      
+      // Update theme based on transition
+      function updateTheme() {
+        if (themeTransitionProgress < 1.0) {
+          const elapsed = (Date.now() - themeTransitionStartTime) / 1000;
+          themeTransitionProgress = Math.min(elapsed / themeTransitionDuration, 1.0);
+          
+          // Use easing function for smoother transition
+          themeTransitionProgress = easeInOutCubic(themeTransitionProgress);
+          
+          // If transition is complete, update current theme
+          if (themeTransitionProgress >= 1.0) {
+            currentTheme = targetTheme;
+            
+            // Update player-info background based on theme
+            const playerInfo = document.getElementById('player-info');
+            
+            if (currentTheme === 'regular') {
+              playerInfo.style.backgroundColor = 'rgba(220, 255, 180, 0.8)';
+            } else if (currentTheme === 'tron') {
+              playerInfo.style.backgroundColor = 'rgba(180, 220, 255, 0.8)';
+            } else if (currentTheme === 'baddie') {
+              playerInfo.style.backgroundColor = 'rgba(255, 180, 220, 0.8)';
+            }
+          }
+        }
+        
+        return {
+          current: currentTheme,
+          target: targetTheme,
+          progress: themeTransitionProgress
+        };
+      }
+      
+      // Get a blended theme between two themes
+      function getBlendedTheme(theme1, theme2, blendFactor) {
+        // Simple theme blending for transitions
+        const blendColor = (color1, color2, factor) => {
+          // Parse hex colors to RGB
+          const r1 = parseInt(color1.substr(1, 2), 16);
+          const g1 = parseInt(color1.substr(3, 2), 16);
+          const b1 = parseInt(color1.substr(5, 2), 16);
+          const r2 = parseInt(color2.substr(1, 2), 16);
+          const g2 = parseInt(color2.substr(3, 2), 16);
+          const b2 = parseInt(color2.substr(5, 2), 16);
+          
+          // Blend
+          const r = Math.round(r1 * (1 - factor) + r2 * factor);
+          const g = Math.round(g1 * (1 - factor) + g2 * factor);
+          const b = Math.round(b1 * (1 - factor) + b2 * factor);
+          
+          // Convert back to hex
+          return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+        };
+        
+        // Return a blended theme object
+        return {
+          primary: blendColor(themes[theme1].primary, themes[theme2].primary, blendFactor),
+          secondary: blendColor(themes[theme1].secondary, themes[theme2].secondary, blendFactor),
+          accent: blendColor(themes[theme1].accent, themes[theme2].accent, blendFactor),
+          background: themes[theme1].background, // Keep background black
+          gradient: function(ctx, w, h, direction) {
+            // Blend between theme gradients
+            if (blendFactor < 0.5) {
+              return themes[theme1].gradient(ctx, w, h, direction);
+            } else {
+              return themes[theme2].gradient(ctx, w, h, direction);
+            }
+          },
+          hue: themes[theme1].hue * (1 - blendFactor) + themes[theme2].hue * blendFactor,
+          getHue: function(base = 0) {
+            // Blend between theme hues
+            const h1 = themes[theme1].getHue(base);
+            const h2 = themes[theme2].getHue(base);
+            return h1 * (1 - blendFactor) + h2 * blendFactor;
+          }
+        };
+      }
+      
+      // Debug play button
+      console.log("Play button found:", playBtn !== null);
+      
+      // Variables for audio context and visualization
+      let audioContext = null;
+      let analyser = null;
+      let source = null;
+      let audio = null;
+      let animationId = null;
+      let particles = [];
+      let hue = themes[currentTheme].hue; // Starting hue
+      let fireworks = []; // Array to store firework particles
+      
+      // Create offscreen canvases for transitions
+      let offscreenCanvas1 = document.createElement('canvas');
+      let offscreenCanvas2 = document.createElement('canvas');
+      let offscreenCtx1 = offscreenCanvas1.getContext('2d');
+      let offscreenCtx2 = offscreenCanvas2.getContext('2d');
+      
+      // Set canvas dimensions
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Also resize offscreen canvases
+        offscreenCanvas1.width = canvas.width;
+        offscreenCanvas1.height = canvas.height;
+        offscreenCanvas2.width = canvas.width;
+        offscreenCanvas2.height = canvas.height;
+      }
+      
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      
+      // Create audio context and setup audio analyzer
+      function setupAudio(audioElement) {
+        console.log("Setting up audio context for:", audioElement.src);
+        
+        try {
+          // Close previous audio context if it exists
+          if (audioContext) {
+            console.log("Closing previous audio context");
+            audioContext.close();
+          }
+          
+          // Create new audio context
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          console.log("Audio context created:", audioContext !== null);
+          
+          // Create analyzer
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          
+          // Connect audio element to analyzer
+          source = audioContext.createMediaElementSource(audioElement);
+          source.connect(analyser);
+          analyser.connect(audioContext.destination);
+          
+          audio = audioElement;
+          
+          // Update UI
+          playBtn.innerHTML = '❚❚';
+          
+          // Get filename or set to Unknown Track
+          let filename = "Unknown Track";
+          try {
+            filename = audio.src.split('/').pop().split('.')[0] || 'Unknown Track';
+            filename = decodeURIComponent(filename);
+          } catch (e) {
+            console.error("Error getting filename:", e);
+          }
+          songTitle.textContent = filename;
+          
+          // Start visualization
+          if (animationId) {
+            console.log("Cancelling previous animation frame");
+            cancelAnimationFrame(animationId);
+          }
+          animate();
+          
+          // Setup progress tracking
+          audio.addEventListener('timeupdate', updateProgress);
+          audio.addEventListener('ended', () => {
+            console.log("Audio ended");
+            playBtn.innerHTML = '▶';
+          });
+          
+          // Update duration display
+          audio.addEventListener('loadedmetadata', () => {
+            updateDurationDisplay();
+          });
+          
+          // Update duration immediately if available
+          if (audio.duration) {
+            updateDurationDisplay();
+          }
+          
+          console.log("Audio setup complete");
+        } catch (error) {
+          console.error("Error in setupAudio:", error);
+        }
+      }
+      
+      // Update progress bar and time display
+      function updateProgress() {
+        if (!audio || !audio.duration || isDragging) return;
+        
+        const progress = (audio.currentTime / audio.duration) * 100;
+        progressBar.style.width = `${progress}%`;
+        progressMarker.style.left = `${progress}%`;
+        
+        // Format elapsed time
+        const mins = Math.floor(audio.currentTime / 60);
+        const secs = Math.floor(audio.currentTime % 60).toString().padStart(2, '0');
+        elapsedTime.textContent = `${mins}:${secs}`;
+      }
+      
+      // Update duration display
+      function updateDurationDisplay() {
+        if (!audio || !isFinite(audio.duration)) return;
+        
+        const mins = Math.floor(audio.duration / 60);
+        const secs = Math.floor(audio.duration % 60).toString().padStart(2, '0');
+        durationTime.textContent = `${mins}:${secs}`;
+      }
+      
+      // Variables for tracking scrubbing
+      let isDragging = false;
+      let wasPlaying = false;
+      
+      // Simple scrubbing implementation that works reliably
+      function setupScrubbing() {
+        // Simple click on progress bar - just jump to that position
+        progress.addEventListener('click', function(e) {
+          if (!audio || !audio.duration) return;
+          
+          // If we're scrubbing, this will be handled by the mouseup event
+          if (isDragging) return;
+          
+          const rect = progress.getBoundingClientRect();
+          const position = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          
+          // Set time
+          audio.currentTime = position * audio.duration;
+          
+          // Update visuals
+          updateProgress();
+        });
+        
+        // Start dragging
+        progress.addEventListener('mousedown', function(e) {
+          if (!audio || !audio.duration) return;
+          
+          isDragging = true;
+          wasPlaying = !audio.paused;
+          console.log("Started scrubbing, was playing:", wasPlaying);
+          
+          // Pause audio while scrubbing
+          if (wasPlaying) {
+            audio.pause();
+          }
+          
+          // Update on initial mouse position
+          updateScrubPosition(e);
+          
+          // Show scrub time indicator
+          scrubTime.style.display = 'block';
+          
+          e.preventDefault();
+        });
+        
+        // Continue dragging - update position as mouse moves
+        document.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          
+          updateScrubPosition(e);
+          e.preventDefault();
+        });
+        
+        // End dragging
+        document.addEventListener('mouseup', function(e) {
+          if (!isDragging) return;
+          
+          // Get final position
+          const rect = progress.getBoundingClientRect();
+          const position = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          
+          // Set time to this position
+          if (audio && audio.duration) {
+            audio.currentTime = position * audio.duration;
+          }
+          
+          // End scrubbing
+          isDragging = false;
+          
+          // Hide scrub time
+          scrubTime.style.display = 'none';
+          
+          // Resume if it was playing before
+          if (wasPlaying) {
+            console.log("Attempting to resume playback");
+            resumePlaybackAfterScrub();
+          }
+        });
+        
+        // Function to update scrub position based on mouse
+        function updateScrubPosition(e) {
+          if (!audio || !audio.duration) return;
+          
+          const rect = progress.getBoundingClientRect();
+          const position = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          
+          // Update visuals
+          progressBar.style.width = `${position * 100}%`;
+          progressMarker.style.left = `${position * 100}%`;
+          
+          // Update time display
+          const timeInSeconds = position * audio.duration;
+          const mins = Math.floor(timeInSeconds / 60);
+          const secs = Math.floor(timeInSeconds % 60).toString().padStart(2, '0');
+          scrubTime.textContent = `${mins}:${secs}`;
+          scrubTime.style.left = `${position * 100}%`;
+        }
+        
+        // Special function to handle play resumption
+        function resumePlaybackAfterScrub() {
+          // Make sure audio context is running
+          if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+          }
+          
+          // This approach tries multiple ways to get playback working
+          try {
+            // The normal way - with promise
+            audio.play()
+              .then(() => {
+                console.log("Playback resumed successfully");
+                playBtn.innerHTML = '❚❚';
+                resumeButton.style.display = 'none';
+              })
+              .catch(error => {
+                console.error("Failed to resume playback:", error);
+                // Show emergency button if play fails
+                resumeButton.style.display = 'block';
+                // Update UI to show paused state
+                playBtn.innerHTML = '▶';
+              });
+          } catch (error) {
+            console.error("Error in play attempt:", error);
+            resumeButton.style.display = 'block';
+          }
+        }
+      }
+      
+      // Handle file upload
+      audioUpload.addEventListener('change', function(e) {
+        console.log("File input change detected");
+        
+        const file = e.target.files[0];
+        if (!file) {
+          console.log("No file selected");
+          return;
+        }
+        
+        console.log("File selected:", file.name);
+        
+        try {
+          // Create object URL for the file
+          const url = URL.createObjectURL(file);
+          
+          // Create new Audio element if needed
+          if (!audio) {
+            console.log("Creating new Audio element");
+            audio = new Audio();
+          }
+          
+          // Set source and prepare to play
+          audio.src = url;
+          
+          // Once audio is ready to play, set up the audio context
+          audio.oncanplay = function() {
+            console.log("Audio can play, setting up audio context");
+            setupAudio(audio);
+            
+            // Try to play the audio
+            audio.play().catch(e => {
+              console.error("Play error:", e);
+              alert("Unable to play the audio. Please click the play button manually.");
+            });
+          };
+          
+          // Handle any errors
+          audio.onerror = function() {
+            console.error("Audio error:", audio.error);
+            alert("Error loading the audio file. Please try another file.");
+          };
+        } catch (err) {
+          console.error("Error processing file:", err);
+          alert("Error processing the file. Please try again.");
+        }
+      });
+      
+      // Handle play/pause button click
+      playBtn.addEventListener('click', function() {
+        console.log("Play button clicked");
+        
+        if (!audio) {
+          console.log("No audio loaded");
+          alert("Please upload an audio file first.");
+          return;
+        }
+        
+        if (audio.paused) {
+          console.log("Attempting to play audio");
+          
+          // Resume AudioContext if it was suspended
+          if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+          }
+          
+          audio.play().then(() => {
+            console.log("Audio playing successfully");
+            playBtn.innerHTML = '❚❚';
+            resumeButton.style.display = 'none';
+            animate();
+          }).catch(e => {
+            console.error("Play error:", e);
+            resumeButton.style.display = 'block';
+            alert("Unable to play audio. Please try again or use the resume button.");
+          });
+        } else {
+          console.log("Pausing audio");
+          audio.pause();
+          playBtn.innerHTML = '▶';
+          if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+          }
+        }
+      });
+      
+      // Handle fullscreen button
+      document.getElementById('fullscreen-btn').addEventListener('click', function() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      });
+      
+      // Handle next visualization button
+      nextBtn.addEventListener('click', function() {
+        if (transitionProgress >= 1.0) {
+          const nextVis = (currentVisualization + 1) % 6;
+          localStorage.setItem('preferredVisualization', nextVis);
+        }
+      });
+      
+      // Handle previous visualization button
+      prevBtn.addEventListener('click', function() {
+        if (transitionProgress >= 1.0) {
+          const prevVis = (currentVisualization - 1 + 6) % 6;
+          localStorage.setItem('preferredVisualization', prevVis);
+        }
+      });
+      
+      // Particle class for the visualization
+      class Particle {
+        constructor() {
+          this.x = canvas.width / 2;
+          this.y = canvas.height / 2;
+          this.size = Math.random() * 8 + 2; // Larger particles
+          this.speedX = Math.random() * 6 - 3; // Faster movement
+          this.speedY = Math.random() * 6 - 3;
+          const themeColors = themes[currentTheme];
+          this.color = `hsl(${themeColors.getHue(Math.random() * 60)}, 100%, ${Math.random() * 30 + 50}%)`;
+          this.lifespan = 200; // Live longer
+        }
+        
+        update(intensity) {
+          this.x += this.speedX * intensity;
+          this.y += this.speedY * intensity;
+          this.size -= 0.05;
+          this.lifespan--;
+        }
+        
+        draw(ctx) {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Firework particle class
+      class Firework {
+        constructor(x, y, particleCount, baseHue) {
+          this.particles = [];
+          this.x = x || Math.random() * canvas.width;
+          this.y = y || Math.random() * (canvas.height * 0.6);
+          this.particleCount = particleCount || 100 + Math.floor(Math.random() * 50);
+          
+          // Use theme-specific hue
+          const themeColors = themes[currentTheme];
+          this.baseHue = baseHue || themeColors.getHue(Math.random() * 60);
+          
+          this.gravity = 0.08;
+          this.fadeRate = 0.02;
+          this.completed = false;
+          
+          // Create particles in all directions
+          for (let i = 0; i < this.particleCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 1 + Math.random() * 3;
+            
+            this.particles.push({
+              x: this.x,
+              y: this.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: 1 + Math.random() * 2,
+              color: `hsl(${this.baseHue + Math.random() * 30 - 15}, 100%, 60%)`,
+              alpha: 1
+            });
+          }
+        }
+        
+        update() {
+          let allFaded = true;
+          
+          for (let i = 0; i < this.particles.length; i++) {
+            const p = this.particles[i];
+            
+            // Apply gravity and move
+            p.vy += this.gravity;
+            p.x += p.vx;
+            p.y += p.vy;
+            
+            // Fade out
+            p.alpha -= this.fadeRate;
+            
+            if (p.alpha > 0) {
+              allFaded = false;
+            }
+          }
+          
+          this.completed = allFaded;
+        }
+        
+        draw(ctx) {
+          for (let i = 0; i < this.particles.length; i++) {
+            const p = this.particles[i];
+            
+            if (p.alpha <= 0) continue;
+            
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+      
+      // Function to add keyboard controls
+      function setupKeyboardControls() {
+        document.addEventListener('keydown', function(event) {
+          console.log("Key pressed:", event.code);
+          
+          // Spacebar - Play/Pause
+          if (event.code === 'Space') {
+            if (audio) {
+              if (audio.paused) {
+                audio.play().then(() => {
+                  playBtn.innerHTML = '❚❚';
+                  resumeButton.style.display = 'none';
+                  animate();
+                }).catch(e => console.error("Play error:", e));
+              } else {
+                audio.pause();
+                playBtn.innerHTML = '▶';
+                if (animationId) {
+                  cancelAnimationFrame(animationId);
+                  animationId = null;
+                }
+              }
+            }
+            // Prevent page scrolling on spacebar
+            event.preventDefault();
+          }
+          
+          // 'T' key to cycle through themes
+          if (event.code === 'KeyT') {
+            if (currentTheme === 'regular') {
+              setTheme('tron');
+            } else if (currentTheme === 'tron') {
+              setTheme('baddie');
+            } else {
+              setTheme('regular');
+            }
+          }
+          
+          // Number keys 1-6 to select visualization type
+          if (event.code.startsWith('Digit') && event.code !== 'Digit0') {
+            const digit = parseInt(event.code.replace('Digit', ''));
+            if (digit >= 1 && digit <= 6) {
+              console.log("Setting visualization type to:", digit - 1);
+              // Store preference to override auto-cycling
+              localStorage.setItem('preferredVisualization', digit - 1);
+            }
+          }
+          
+          // Left/Right arrow keys for seeking
+          if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+            if (!audio || !audio.duration) return;
+            
+            // Skip 5 seconds
+            const seekAmount = 5;
+            
+            if (event.code === 'ArrowLeft') {
+              audio.currentTime = Math.max(0, audio.currentTime - seekAmount);
+            } else if (event.code === 'ArrowRight') {
+              audio.currentTime = Math.min(audio.duration, audio.currentTime + seekAmount);
+            }
+            
+            // Force an immediate update of the UI
+            updateProgress();
+            
+            // Prevent page scrolling with arrow keys
+            event.preventDefault();
+          }
+          
+          // 'F' key for fullscreen
+          if (event.code === 'KeyF') {
+            if (!document.fullscreenElement) {
+              document.documentElement.requestFullscreen();
+            } else {
+              document.exitFullscreen();
+            }
+          }
+        });
+      }
+      
+      // Draw visualization based on type
+      function drawVisualization(visType, context, dataArray, intensity, themeColors, centerX, centerY) {
+        const ctx = context;
+        
+        if (visType === 0) {
+          // Perfectly circular wave pattern
+          ctx.strokeStyle = `hsl(${themeColors.getHue(hue)}, 100%, 50%)`;
+          ctx.lineWidth = 3;
+          
+          // Draw multiple concentric circles with wave effects
+          const numRings = 5;
+          
+          for (let ring = 0; ring < numRings; ring++) {
+            ctx.beginPath();
+            
+            // Base radius for this ring
+            const baseRadius = 50 + (ring * 60); 
+            
+            // Get frequency data for this ring
+            const startFreq = Math.floor((ring / numRings) * dataArray.length);
+            const endFreq = Math.floor(((ring + 1) / numRings) * dataArray.length);
+            const ringData = dataArray.slice(startFreq, endFreq);
+            const ringIntensity = ringData.reduce((a, b) => a + b, 0) / ringData.length / 255;
+            
+            // Wave amplitude that maintains circularity
+            const waveAmplitude = 20 * ringIntensity;
+            
+            // Draw the circle with 360 points for smoothness
+            for (let i = 0; i < 360; i++) {
+              const angle = (i / 360) * Math.PI * 2;
+              
+              // Calculate wave effect based on angle
+              // Using multiple sine waves with different frequencies for complexity
+              const wave = waveAmplitude * (
+                Math.sin(angle * 8 + Date.now() * 0.001) * 0.5 + 
+                Math.sin(angle * 16 + Date.now() * 0.002) * 0.3 +
+                Math.sin(angle * 4 - Date.now() * 0.001) * 0.2
+              );
+              
+              // The radius varies slightly to create wave effect while maintaining circularity
+              const radius = baseRadius + wave;
+              
+              const x = centerX + Math.cos(angle) * radius;
+              const y = centerY + Math.sin(angle) * radius;
+              
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            }
+            
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Add a glow effect
+            ctx.save();
+            ctx.globalAlpha = 0.2 * ringIntensity;
+            ctx.lineWidth = 12;
+            ctx.strokeStyle = `hsl(${themeColors.getHue(hue + ring * 30)}, 100%, 70%)`;
+            ctx.stroke();
+            ctx.restore();
+          }
+          
+          // Add radial spikes from the center
+          if (intensity > 0.5) {
+            const spikeCount = 120;
+            
+            for (let i = 0; i < spikeCount; i++) {
+              const angle = (i / spikeCount) * Math.PI * 2;
+              
+              // Get data for this angle
+              const dataIndex = Math.floor((i / spikeCount) * dataArray.length);
+              const value = dataArray[dataIndex] / 255;
+              
+              if (value < 0.3) continue; // Skip low-intensity spikes
+              
+              // Calculate length with audio reactivity
+              const minLength = 10;
+              const maxLength = 200;
+              const length = minLength + value * (maxLength - minLength);
+              
+              // Draw a spike from center with varying opacity based on intensity
+              ctx.beginPath();
+              ctx.moveTo(centerX, centerY);
+              const endX = centerX + Math.cos(angle) * length;
+              const endY = centerY + Math.sin(angle) * length;
+              
+              // Create a gradient for each spike
+              const gradient = ctx.createLinearGradient(centerX, centerY, endX, endY);
+              gradient.addColorStop(0, `hsla(${themeColors.getHue(120)}, 100%, 70%, 0.8)`);
+              gradient.addColorStop(1, `hsla(${themeColors.getHue(120)}, 100%, 70%, 0)`);
+              
+              ctx.strokeStyle = gradient;
+              ctx.lineWidth = 1 + value * 3;
+              ctx.lineTo(endX, endY);
+              ctx.stroke();
+            }
+          }
+          
+          // Add central glow
+          const glowRadius = 30 + intensity * 50;
+          const centralGlow = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, glowRadius
+          );
+          centralGlow.addColorStop(0, `hsla(${themeColors.getHue(120)}, 100%, 70%, 0.8)`);
+          centralGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          
+          ctx.fillStyle = centralGlow;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+        } 
+        else if (visType === 1) {
+          // Two reactive horizontal lines
+          ctx.lineWidth = 5; // Thicker lines
+          
+          // Top line
+          ctx.strokeStyle = `hsl(${themeColors.getHue(hue)}, 100%, 50%)`;
+          ctx.beginPath();
+          
+          const lineWidth = canvas.width * 0.8; // 80% of screen width
+          const startX = (canvas.width - lineWidth) / 2;
+          const lineY1 = canvas.height / 2 - 100;
+          
+          for (let i = 0; i < dataArray.length; i++) {
+            const x = startX + (i / dataArray.length) * lineWidth;
+            const value = dataArray[i] / 255;
+            const y = lineY1 - value * 100 * (Math.sin(Date.now() * 0.001 + i * 0.1) * 0.3 + 0.7);
+            
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+          
+          ctx.stroke();
+          
+          // Bottom line - use secondary color
+          ctx.strokeStyle = `hsl(${themeColors.getHue(180)}, 100%, 50%)`; // Complementary color
+          ctx.beginPath();
+          
+          const lineY2 = canvas.height / 2 + 100;
+          
+          for (let i = 0; i < dataArray.length; i++) {
+            const x = startX + (i / dataArray.length) * lineWidth;
+            const value = dataArray[i] / 255;
+            const y = lineY2 + value * 100 * (Math.sin(Date.now() * 0.001 + i * 0.1) * 0.3 + 0.7);
+            
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+          
+          ctx.stroke();
+        } 
+        else if (visType === 2) {
+          // Starburst effect that explodes with the beat
+          const burstRadius = 10 + intensity * 200; // Size based on audio intensity
+          const burstCount = 16 + Math.floor(intensity * 16); // More lines for louder audio
+          
+          ctx.strokeStyle = `hsl(${themeColors.getHue(hue)}, 100%, 50%)`;
+          ctx.lineWidth = 2 + intensity * 3; // Dynamic line width
+          
+          // Draw star bursts
+          for (let i = 0; i < burstCount; i++) {
+            const angle = (i / burstCount) * Math.PI * 2;
+            // Get audio data for this angle
+            const dataIndex = Math.floor((i / burstCount) * dataArray.length);
+            const value = dataArray[dataIndex] / 255;
+            
+            // Calculate length with audio reactivity
+            const length = burstRadius * (0.5 + value * 0.5);
+            
+            // Draw a line from center
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            const endX = centerX + Math.cos(angle) * length;
+            const endY = centerY + Math.sin(angle) * length;
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            
+            // Add a small circle at the end of each line for effect
+            if (value > 0.5) { // Only on stronger beats
+              ctx.fillStyle = `hsl(${themeColors.getHue(i * 5)}, 100%, 70%)`;
+              ctx.beginPath();
+              ctx.arc(endX, endY, 2 + value * 5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        } 
+        else if (visType === 3) {
+          // DNA double helix visualization
+          // Get frequency data for animation control
+          const bassRange = dataArray.slice(0, Math.floor(dataArray.length * 0.2));
+          const midRange = dataArray.slice(Math.floor(dataArray.length * 0.2), Math.floor(dataArray.length * 0.6));
+          const highRange = dataArray.slice(Math.floor(dataArray.length * 0.6));
+          
+          // Calculate average values for each range
+          const bassAvg = bassRange.reduce((a, b) => a + b, 0) / bassRange.length / 255;
+          const midAvg = midRange.reduce((a, b) => a + b, 0) / midRange.length / 255;
+          const highAvg = highRange.reduce((a, b) => a + b, 0) / highRange.length / 255;
+          
+          // DNA helix parameters
+          const helixLength = canvas.width * 0.8; // Length of the helix
+          const helixStartX = (canvas.width - helixLength) / 2;
+          const helixHeight = canvas.height * 0.5 * (0.5 + midAvg * 0.5); // Height varies with mid frequencies
+          const twistSpeed = Date.now() * 0.001 * (0.3 + bassAvg * 0.7); // Twist speed varies with bass
+          const twistTightness = 6 + highAvg * 10; // More twists with higher frequencies
+          const strandWidth = 3 + intensity * 5; // Strand thickness
+          const segments = 100; // Number of segments to render
+          const rungCount = 20 + Math.floor(intensity * 20); // Number of rungs, increases with intensity
+          
+          // Theme colors for the DNA strands
+          const strand1Color = `hsl(${themeColors.getHue()}, 100%, 70%)`;
+          const strand2Color = `hsl(${themeColors.getHue(60)}, 100%, 70%)`;
+          
+          // For Baddie theme, sometimes use cheetah pattern
+          let usePattern = false;
+          let pattern = null;
+          
+          if (currentTheme === 'baddie' && bassAvg > 0.7) {
+            usePattern = true;
+            pattern = themes.baddie.getPattern(ctx);
+          }
+          
+          // Background glow
+          const glowRadius = 100 + intensity * 100;
+          const centralGlow = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, glowRadius
+          );
+          centralGlow.addColorStop(0, `hsla(${themeColors.getHue()}, 100%, 50%, ${intensity * 0.2})`);
+          centralGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          
+          ctx.fillStyle = centralGlow;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Draw DNA strands
+          const strand1Points = [];
+          const strand2Points = [];
+          
+          for (let i = 0; i <= segments; i++) {
+            const progress = i / segments;
+            const x = helixStartX + progress * helixLength;
+            
+            // Calculate y positions of both strands with offset phase
+            const waveHeight = helixHeight * (0.5 + 0.5 * Math.sin(progress * Math.PI * 2));
+            const y1 = centerY + waveHeight * Math.sin(progress * Math.PI * twistTightness + twistSpeed);
+            const y2 = centerY + waveHeight * Math.sin(progress * Math.PI * twistTightness + twistSpeed + Math.PI);
+            
+            strand1Points.push({ x, y: y1 });
+            strand2Points.push({ x, y: y2 });
+          }
+          
+          // Draw first strand
+          ctx.lineWidth = strandWidth;
+          ctx.strokeStyle = strand1Color;
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          
+          ctx.beginPath();
+          strand1Points.forEach((point, index) => {
+            if (index === 0) {
+              ctx.moveTo(point.x, point.y);
+            } else {
+              ctx.lineTo(point.x, point.y);
+            }
+          });
+          ctx.stroke();
+          
+          // Draw second strand
+          ctx.strokeStyle = strand2Color;
+          ctx.beginPath();
+          strand2Points.forEach((point, index) => {
+            if (index === 0) {
+              ctx.moveTo(point.x, point.y);
+            } else {
+              ctx.lineTo(point.x, point.y);
+            }
+          });
+          ctx.stroke();
+          
+          // Draw connecting rungs
+          const rungSpacing = Math.floor(segments / rungCount);
+          
+          for (let i = 0; i < rungCount; i++) {
+            const index = i * rungSpacing;
+            if (index >= strand1Points.length) continue;
+            
+            const start = strand1Points[index];
+            const end = strand2Points[index];
+            
+            // Get frequency data for this position
+            const dataIndex = Math.floor((i / rungCount) * dataArray.length);
+            const value = dataArray[dataIndex] / 255;
+            
+            // Skip some rungs for low audio frequencies
+            if (value < 0.2) continue;
+            
+            // Thickness of rung varies with audio frequency
+            ctx.lineWidth = 1 + value * 4;
+            
+            // Different rung colors based on theme
+            if (usePattern && i % 3 === 0) {
+              // For Baddie theme, occasional cheetah pattern
+              ctx.strokeStyle = strand2Color;
+            } else {
+              // Color based on frequency
+              ctx.strokeStyle = `hsl(${themeColors.getHue(i * 10)}, 100%, ${50 + value * 30}%)`;
+            }
+            
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+            
+            // Add glowing dots at the connection points
+            const glowSize = 2 + value * 6;
+            
+            ctx.fillStyle = `hsl(${themeColors.getHue(i * 10 + 30)}, 100%, 70%)`;
+            
+            // Start point glow
+            ctx.beginPath();
+            ctx.arc(start.x, start.y, glowSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // End point glow
+            ctx.beginPath();
+            ctx.arc(end.x, end.y, glowSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          // Add particles along the DNA strand during high intensity
+          if (intensity > 0.7) {
+            const particleCount = Math.floor(intensity * 30);
+            
+            for (let i = 0; i < particleCount; i++) {
+              // Randomly select strand and position
+              const strandPoints = Math.random() > 0.5 ? strand1Points : strand2Points;
+              const pointIndex = Math.floor(Math.random() * strandPoints.length);
+              if (!strandPoints[pointIndex]) continue;
+              
+              const x = strandPoints[pointIndex].x;
+              const y = strandPoints[pointIndex].y;
+              
+              // Create particle glow
+              const particleSize = 2 + Math.random() * 6;
+              ctx.globalAlpha = 0.7 * Math.random();
+              ctx.fillStyle = `hsl(${themeColors.getHue(Math.random() * 60)}, 100%, 80%)`;
+              ctx.beginPath();
+              ctx.arc(x, y, particleSize, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            
+            // Reset alpha
+            ctx.globalAlpha = 1.0;
+          }
+        }
+        else if (visType === 4) {
+          // Spiral patterns that react to different frequency ranges
+          ctx.lineWidth = 2 + intensity * 3;
+          
+          // Split frequency data into ranges
+          const bassRange = dataArray.slice(0, Math.floor(dataArray.length * 0.2));
+          const midRange = dataArray.slice(Math.floor(dataArray.length * 0.2), Math.floor(dataArray.length * 0.6));
+          const highRange = dataArray.slice(Math.floor(dataArray.length * 0.6));
+          
+          // Calculate average values for each range
+          const bassAvg = bassRange.reduce((a, b) => a + b, 0) / bassRange.length / 255;
+          const midAvg = midRange.reduce((a, b) => a + b, 0) / midRange.length / 255;
+          const highAvg = highRange.reduce((a, b) => a + b, 0) / highRange.length / 255;
+          
+          // Draw multiple spirals
+          const spiralCount = 2; // Number of intertwined spirals
+          const maxRadius = Math.min(canvas.width, canvas.height) * 0.4 * (0.8 + bassAvg * 0.4);
+          const turns = 5 + midAvg * 5; // Number of spiral turns
+          const pointsPerSpiral = 150;
+          
+          for (let s = 0; s < spiralCount; s++) {
+            ctx.beginPath();
+            
+            // Different color for each spiral
+            ctx.strokeStyle = `hsl(${themeColors.getHue(s * 180)}, 100%, 50%)`;
+            
+            for (let i = 0; i < pointsPerSpiral; i++) {
+              const ratio = i / pointsPerSpiral;
+              const angle = turns * Math.PI * 2 * ratio + Date.now() * 0.001 * (s + 1) * (bassAvg > 0.7 ? 2 : 1);
+              const spiralRadius = ratio * maxRadius;
+              
+              // Add waviness based on frequency data
+              const waveFactor = 5 + highAvg * 15;
+              const waveOffset = Math.sin(ratio * Math.PI * 8 + Date.now() * 0.002) * waveFactor;
+              
+              const x = centerX + Math.cos(angle) * (spiralRadius + waveOffset);
+              const y = centerY + Math.sin(angle) * (spiralRadius + waveOffset);
+              
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            }
+            ctx.stroke();
+          }
+        }
+        else if (visType === 5) {
+          // Fireworks visualization
+          // Add subtle background glow effects
+          const glowRadius = 100 + intensity * 50;
+          const gradient = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, glowRadius
+          );
+          gradient.addColorStop(0, `hsla(${themeColors.getHue()}, 100%, 50%, ${intensity * 0.1})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      
+      // Animation loop
+      function animate() {
+        if (!analyser) {
+          console.log("No analyser available, skipping animation frame");
+          animationId = requestAnimationFrame(animate);
+          return;
+        }
+        
+        animationId = requestAnimationFrame(animate);
+        
+        // Clear canvas with a fade effect
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Get frequency data
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Calculate average intensity
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        const intensity = average / 100;
+        
+        // Update visualization type with transitions
+        const visualizationState = updateVisualizationType();
+        
+        // Update theme with transitions
+        const themeState = updateTheme();
+        
+        // Get appropriate theme colors
+        let themeColors;
+        if (themeState.progress < 1.0) {
+          // During theme transition, blend the themes
+          themeColors = getBlendedTheme(themeState.current, themeState.target, themeState.progress);
+        } else {
+          // Use the current theme
+          themeColors = themes[themeState.current];
+        }
+        
+        // Slowly shift hue
+        hue = (hue + 0.1) % 360;
+        
+        // Create particles based on intensity
+        if (intensity > 0.5) {
+          for (let i = 0; i < intensity * 8; i++) { // More particles
+            particles.push(new Particle());
+          }
+        }
+        
+        // Update and draw particles
+        for (let i = 0; i < particles.length; i++) {
+          particles[i].update(intensity);
+          particles[i].draw(ctx);
+          
+          // Remove dead particles
+          if (particles[i].size <= 0.2 || particles[i].lifespan <= 0) {
+            particles.splice(i, 1);
+            i--;
+          }
+        }
+        
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        // Handle visualization transitions
+        if (visualizationState.progress < 1.0) {
+          // Clear offscreen canvases
+          offscreenCtx1.fillStyle = 'rgba(0, 0, 0, 0.1)';
+          offscreenCtx1.fillRect(0, 0, canvas.width, canvas.height);
+          offscreenCtx2.fillStyle = 'rgba(0, 0, 0, 0.1)';
+          offscreenCtx2.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw current visualization to first canvas
+          drawVisualization(
+            visualizationState.current, 
+            offscreenCtx1, 
+            dataArray, 
+            intensity, 
+            themeColors,
+            centerX,
+            centerY
+          );
+          
+          // Draw target visualization to second canvas
+          drawVisualization(
+            visualizationState.target, 
+            offscreenCtx2, 
+            dataArray, 
+            intensity, 
+            themeColors,
+            centerX,
+            centerY
+          );
+          
+          // Special transitions between certain visualization pairs
+          if ((visualizationState.current === 0 && visualizationState.target === 3) ||
+              (visualizationState.current === 3 && visualizationState.target === 0)) {
+            // Circular to DNA or DNA to Circular - spiral transition
+            morphTransition(visualizationState.progress);
+          } else {
+            // Default crossfade
+            crossfadeTransition(visualizationState.progress);
+          }
+          
+          // Create and update fireworks for visualization 5
+          if (visualizationState.current === 5 || visualizationState.target === 5) {
+            updateFireworks(dataArray, intensity, themeColors);
+          }
+        } else {
+          // Normal rendering of current visualization
+          drawVisualization(
+            visualizationState.current, 
+            ctx, 
+            dataArray, 
+            intensity, 
+            themeColors,
+            centerX,
+            centerY
+          );
+          
+          // Special case for fireworks which need continuous update even when not transitioning
+          if (visualizationState.current === 5) {
+            updateFireworks(dataArray, intensity, themeColors);
+          }
+        }
+      }
+      
+      // Spiral morphing transition effect
+      function morphTransition(progress) {
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        // Create a spiral pattern for the transition
+        const segments = 30;
+        const spiralTurns = 2;
+        
+        // Draw spiral strips with increasing delay
+        for (let i = 0; i < segments; i++) {
+          const segmentProgress = Math.max(0, Math.min(1, (progress * 1.5) - (i / segments)));
+          
+          if (segmentProgress <= 0) continue;
+          
+          // Determine strip parameters
+          const angle = (i / segments) * Math.PI * 2 * spiralTurns;
+          const radius = i / segments * Math.min(width, height) * 0.5;
+          const centerX = width / 2;
+          const centerY = height / 2;
+          
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          
+          // Size increases with segment index
+          const size = 50 + i * 5;
+          
+          // Draw slice from target canvas (next visualization)
+          ctx.globalAlpha = segmentProgress;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x, y, size * segmentProgress, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(offscreenCanvas2, 0, 0);
+          ctx.restore();
+        }
+        
+        // Reset alpha
+        ctx.globalAlpha = 1.0;
+      }
+      
+      // Simple crossfade transition
+      function crossfadeTransition(progress) {
+        // Draw current visualization
+        ctx.globalAlpha = 1.0;
+        ctx.drawImage(offscreenCanvas1, 0, 0);
+        
+        // Blend in next visualization
+        ctx.globalAlpha = progress;
+        ctx.drawImage(offscreenCanvas2, 0, 0);
+        
+        // Reset alpha
+        ctx.globalAlpha = 1.0;
+      }
+      
+      // Update and draw fireworks
+      function updateFireworks(dataArray, intensity, themeColors) {
+        // Create new fireworks based on audio intensity
+        if (intensity > 0.7 && Math.random() < intensity * 0.2) {
+          // Create more fireworks on louder beats
+          const count = Math.floor(intensity * 5);
+          for (let i = 0; i < count; i++) {
+            // Create with slight delay
+            setTimeout(() => {
+              // Get a random position that's influenced by the audio data
+              const dataIndex = Math.floor(Math.random() * dataArray.length);
+              const xOffset = (dataArray[dataIndex] / 255 - 0.5) * canvas.width * 0.5;
+              const x = canvas.width * 0.5 + xOffset;
+              const y = canvas.height * 0.7 - Math.random() * canvas.height * 0.4;
+              
+              // Create firework with particle count based on intensity
+              const particleCount = 50 + Math.floor(intensity * 150);
+              // Color based on current theme with some variation
+              const colorHue = themeColors.getHue(i * 30);
+              
+              fireworks.push(new Firework(x, y, particleCount, colorHue));
+            }, i * 100); // Stagger the fireworks
+          }
+        }
+        
+        // Update and draw all fireworks
+        for (let i = 0; i < fireworks.length; i++) {
+          fireworks[i].update();
+          fireworks[i].draw(ctx);
+          
+          // Remove completed fireworks
+          if (fireworks[i].completed) {
+            fireworks.splice(i, 1);
+            i--;
+          }
+        }
+      }
+      
+      // Setup keyboard controls
+      setupKeyboardControls();
+      
+      // Setup scrubbing
+      setupScrubbing();
+      
+      // Show initial visualization label
+      visLabel.textContent = visualizationLabels[0];
+      visLabel.classList.add('show');
+      setTimeout(() => visLabel.classList.remove('show'), 2000);
+      
+      console.log("Visualizer initialization complete");
+    });
+  </script>
+</body>
+</html>
